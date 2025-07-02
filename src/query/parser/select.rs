@@ -48,30 +48,49 @@ impl SelectParser {
         for block in storage_blocks {
             for record in block.get_all() {
                 // Build row data as Vec<String> for WHERE evaluation
+                let mut offset = 0;
                 let row_data: Vec<String> = table.columns.iter().map(|col| {
-                    match col.data_type {
+                    let result = match col.data_type {
                         ColumnType::Integer => {
-                            let bytes = &record.data[0..8];
+                            let bytes = &record.data[offset..offset+8];
                             let num = i64::from_be_bytes(bytes.try_into().unwrap());
+                            offset += 8;
                             num.to_string()
                         },
                         ColumnType::Float => {
-                            let bytes = &record.data[0..8];
+                            let bytes = &record.data[offset..offset+8];
                             let num = f64::from_be_bytes(bytes.try_into().unwrap());
+                            offset += 8;
                             num.to_string()
                         },
-                        ColumnType::String(_max_len) => {
-                            String::from_utf8_lossy(&record.data).to_string()
+                        ColumnType::Varchar(_max_len) => {
+                            // Read length prefix (4 bytes)
+                            let length_bytes = &record.data[offset..offset+4];
+                            let length = u32::from_be_bytes(length_bytes.try_into().unwrap()) as usize;
+                            offset += 4;
+                            
+                            // Read string data
+                            let string_bytes = &record.data[offset..offset+length];
+                            offset += length;
+                            String::from_utf8_lossy(string_bytes).to_string()
                         },
                         ColumnType::Boolean => {
-                            if !record.data.is_empty() && record.data[0] == 1 { "true".to_string() } else { "false".to_string() }
+                            let result = if !record.data.is_empty() && record.data[offset] == 1 { 
+                                "true".to_string() 
+                            } else { 
+                                "false".to_string() 
+                            };
+                            offset += 1;
+                            result
                         },
                         ColumnType::Timestamp => {
-                            let bytes = &record.data[0..8];
+                            let bytes = &record.data[offset..offset+8];
                             let num = i64::from_be_bytes(bytes.try_into().unwrap());
+                            offset += 8;
                             num.to_string()
                         },
-                    }
+                    };
+                    result
                 }).collect();
 
                 if let Some(ref where_clause) = where_clause {

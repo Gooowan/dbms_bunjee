@@ -93,22 +93,23 @@ impl UpdateParser {
                     .map_err(|_| QueryError::TypeMismatch(format!("Invalid float value: {}", value)))?;
                 Ok(num.to_be_bytes().to_vec())
             },
-            ColumnType::String(max_len) => {
-                if value.len() > max_len {
+            ColumnType::Varchar(max_len) => {
+                let cleaned_value = value.trim_matches(|c| c == '\'' || c == '"');
+                if cleaned_value.len() > max_len {
                     return Err(QueryError::TypeMismatch(format!(
-                        "Value '{}' exceeds column length of {}", value, max_len
+                        "Value '{}' exceeds column length of {}", cleaned_value, max_len
                     )));
                 }
-                let mut bytes = (value.len() as u32).to_be_bytes().to_vec();
-                bytes.extend(value.as_bytes());
+                let mut bytes = (cleaned_value.len() as u32).to_be_bytes().to_vec();
+                bytes.extend(cleaned_value.as_bytes());
                 Ok(bytes)
             },
             ColumnType::Boolean => {
-                let value = value.to_lowercase();
-                if value != "true" && value != "false" {
+                let cleaned_value = value.trim_matches(|c| c == '\'' || c == '"').to_lowercase();
+                if cleaned_value != "true" && cleaned_value != "false" {
                     return Err(QueryError::TypeMismatch(format!("Invalid boolean value: {}", value)));
                 }
-                Ok(vec![if value == "true" { 1 } else { 0 }])
+                Ok(vec![if cleaned_value == "true" { 1 } else { 0 }])
             },
             ColumnType::Timestamp => {
                 let num = value.parse::<i64>()

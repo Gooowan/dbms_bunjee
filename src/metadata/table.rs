@@ -38,7 +38,7 @@ impl Table {
     pub fn get_column_offset(&self, column_index: usize) -> usize {
         self.columns[..column_index].iter()
             .map(|col| match &col.data_type {
-                ColumnType::String(max_len) => *max_len,
+                ColumnType::Varchar(max_len) => *max_len,
                 _ => 8, // Default size for other types
             })
             .sum()
@@ -46,7 +46,7 @@ impl Table {
 
     pub fn get_column_length(&self, column_index: usize) -> usize {
         match &self.columns[column_index].data_type {
-            ColumnType::String(max_len) => *max_len,
+            ColumnType::Varchar(max_len) => *max_len,
             _ => 8, // Default size for other types
         }
     }

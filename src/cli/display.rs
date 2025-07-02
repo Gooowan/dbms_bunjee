@@ -8,19 +8,12 @@ pub fn display_result(result: &QueryResult) {
                 return;
             }
 
-            if let Some(first_row) = rows.first() {
-                for (_i, value) in first_row.iter().enumerate() {
+            // Display all rows without duplicating the first one
+            for row in rows {
+                for value in row {
                     print!("{} | ", value);
                 }
                 println!();
-                println!("{}", "-".repeat(rows[0].len() * 12));
-
-                for row in rows {
-                    for value in row {
-                        print!("{} | ", value);
-                    }
-                    println!();
-                }
             }
         }
         QueryResult::Insert(count) => println!("Inserted {} rows", count),

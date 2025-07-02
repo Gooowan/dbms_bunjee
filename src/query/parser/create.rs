@@ -64,23 +64,38 @@ impl CreateParser {
     }
 
     fn parse_column_type(&self, parts: &[&str]) -> Result<ColumnType, QueryError> {
-        match parts[0].to_uppercase().as_str() {
-            "INT" | "INTEGER" => Ok(ColumnType::Integer),
-            "VARCHAR" => {
-                if parts.len() < 2 {
-                    return Err(QueryError::SyntaxError("VARCHAR requires length specification".to_string()));
-                }
+        let type_str = parts[0].to_uppercase();
+        
+        if type_str.starts_with("VARCHAR") {
+            // Handle VARCHAR(n) format
+            if type_str.contains('(') {
+                let start = type_str.find('(').unwrap() + 1;
+                let end = type_str.find(')').ok_or_else(|| QueryError::SyntaxError("Missing closing parenthesis for VARCHAR".to_string()))?;
+                let length_str = &type_str[start..end];
+                let len = length_str.parse::<usize>().map_err(|_| QueryError::SyntaxError(format!(
+                    "Invalid length for VARCHAR: {}", length_str
+                )))?;
+                Ok(ColumnType::Varchar(len))
+            } else if parts.len() >= 2 {
+                // Handle VARCHAR n format
                 let length_str = parts[1].trim_matches(|c| c == '(' || c == ')');
                 let len = length_str.parse::<usize>().map_err(|_| QueryError::SyntaxError(format!(
                     "Invalid length for VARCHAR: {}", length_str
                 )))?;
-                Ok(ColumnType::String(len))
-            },
-            "BOOLEAN" => Ok(ColumnType::Boolean),
-            "TIMESTAMP" => Ok(ColumnType::Timestamp),
-            _ => Err(QueryError::SyntaxError(format!(
-                "Unsupported column type: {}", parts[0]
-            ))),
+                Ok(ColumnType::Varchar(len))
+            } else {
+                Err(QueryError::SyntaxError("VARCHAR requires length specification".to_string()))
+            }
+        } else {
+            match type_str.as_str() {
+                "INT" | "INTEGER" => Ok(ColumnType::Integer),
+                "FLOAT" => Ok(ColumnType::Float),
+                "BOOLEAN" => Ok(ColumnType::Boolean),
+                "TIMESTAMP" => Ok(ColumnType::Timestamp),
+                _ => Err(QueryError::SyntaxError(format!(
+                    "Unsupported column type: {}", parts[0]
+                ))),
+            }
         }
     }
 } 
