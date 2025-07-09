@@ -1,0 +1,5 @@
+CREATE TABLE users (id INT, name VARCHAR(50), is_active BOOLEAN)
+
+INSERT INTO users VALUES (1, 'Alice Smith', true), (2, "Bob Johnson", 'false')
+
+SELECT * FROM users WHERE is_active = false

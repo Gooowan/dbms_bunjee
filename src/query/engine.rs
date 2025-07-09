@@ -5,6 +5,8 @@ use super::error::QueryError;
 use super::result::QueryResult;
 use super::parser::{SelectParser, InsertParser, UpdateParser, DeleteParser, CreateParser};
 
+// TODO: AST mode for tree and plan execution + DEBUG MODE
+
 pub struct QueryEngine {
     tables: HashMap<String, Table>,
     storage_tables: HashMap<String, Vec<Block>>,
