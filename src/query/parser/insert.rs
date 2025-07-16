@@ -1,5 +1,5 @@
 use crate::metadata::{Table, Column, ColumnType};
-use crate::storage::{Block, Record};
+use crate::storage::{Block, Record, LSMEngine};
 use crate::query::error::QueryError;
 use crate::query::result::QueryResult;
 
@@ -10,6 +10,7 @@ impl InsertParser {
         InsertParser
     }
 
+    // Original method for backward compatibility
     pub fn parse_and_execute(
         &self,
         tokens: &[&str],
@@ -99,11 +100,91 @@ impl InsertParser {
                 total_inserted += 1;
             }
         }
-        if total_inserted > 0 {
-            Ok(QueryResult::Insert(total_inserted))
-        } else {
-            Err(QueryError::InternalError("Failed to insert record(s)".to_string()))
+
+        Ok(QueryResult::Insert(total_inserted))
+    }
+
+    // New LSM engine method
+    pub fn parse_and_execute_lsm(
+        &self,
+        tokens: &[&str],
+        table: &Table,
+        storage_engine: &mut LSMEngine,
+    ) -> Result<QueryResult, QueryError> {
+        if tokens.len() < 4 {
+            return Err(QueryError::SyntaxError("Invalid INSERT syntax".to_string()));
         }
+
+        // Parse INTO clause
+        if tokens[1].to_uppercase() != "INTO" {
+            return Err(QueryError::SyntaxError("Expected INTO clause".to_string()));
+        }
+
+        // Parse VALUES clause
+        let values_start = tokens.iter()
+            .position(|&t| t.to_uppercase() == "VALUES")
+            .ok_or_else(|| QueryError::SyntaxError("Expected VALUES clause".to_string()))?;
+
+        // Parse column names if specified
+        let columns = if tokens[2].starts_with('(') {
+            let col_end = tokens.iter()
+                .position(|&t| t.ends_with(')'))
+                .ok_or_else(|| QueryError::SyntaxError("Expected closing parenthesis for columns".to_string()))?;
+            
+            let col_tokens = &tokens[2..=col_end];
+            self.parse_column_list(col_tokens)?
+        } else {
+            // Use all columns in table order
+            table.columns.iter().map(|c| c.name.clone()).collect()
+        };
+
+        // Parse values
+        let values_vec = self.parse_values(&tokens[values_start + 1..])?;
+        let mut total_inserted = 0;
+        
+        for values in values_vec {
+            if columns.len() != values.len() {
+                return Err(QueryError::SyntaxError(format!(
+                    "Column count ({}) does not match value count ({})",
+                    columns.len(),
+                    values.len()
+                )));
+            }
+
+            // Validate and convert values
+            let mut record_data = Vec::new();
+            for (col_name, value) in columns.iter().zip(values.iter()) {
+                let column = table.columns.iter()
+                    .find(|c| c.name == *col_name)
+                    .ok_or_else(|| QueryError::ColumnNotFound(col_name.clone()))?;
+
+                if !column.validate_value(value) {
+                    return Err(QueryError::TypeMismatch(format!(
+                        "Invalid value '{}' for column '{}'",
+                        value, col_name
+                    )));
+                }
+
+                // Convert value to bytes based on column type
+                let value_bytes = self.convert_value_to_bytes(value, column)?;
+                record_data.extend(value_bytes);
+            }
+
+            // Generate unique record ID (in production, you'd want better ID generation)
+            let record_id = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos() as u64;
+
+            // Create and insert record using LSM engine
+            let record = Record::new(record_id, record_data);
+            storage_engine.insert(record)
+                .map_err(|e| QueryError::InternalError(format!("Failed to insert record: {}", e)))?;
+            
+            total_inserted += 1;
+        }
+
+        Ok(QueryResult::Insert(total_inserted))
     }
 
     fn parse_column_list(&self, tokens: &[&str]) -> Result<Vec<String>, QueryError> {

@@ -1,0 +1,60 @@
+{
+  "test_users": {
+    "name": "test_users",
+    "columns": [
+      {
+        "name": "id",
+        "data_type": "Integer",
+        "constraints": [],
+        "default_value": null,
+        "created_at": "2025-07-16T08:29:44.700831Z",
+        "updated_at": "2025-07-16T08:29:44.700831Z"
+      },
+      {
+        "name": "name",
+        "data_type": {
+          "Varchar": 50
+        },
+        "constraints": [],
+        "default_value": null,
+        "created_at": "2025-07-16T08:29:44.700833Z",
+        "updated_at": "2025-07-16T08:29:44.700833Z"
+      }
+    ],
+    "primary_key": null,
+    "indexes": {}
+  },
+  "products": {
+    "name": "products",
+    "columns": [
+      {
+        "name": "id",
+        "data_type": "Integer",
+        "constraints": [],
+        "default_value": null,
+        "created_at": "2025-07-09T12:16:13.903830Z",
+        "updated_at": "2025-07-09T12:16:13.903830Z"
+      },
+      {
+        "name": "name",
+        "data_type": {
+          "Varchar": 30
+        },
+        "constraints": [],
+        "default_value": null,
+        "created_at": "2025-07-09T12:16:13.903835Z",
+        "updated_at": "2025-07-09T12:16:13.903835Z"
+      },
+      {
+        "name": "price",
+        "data_type": "Integer",
+        "constraints": [],
+        "default_value": null,
+        "created_at": "2025-07-09T12:16:13.903836Z",
+        "updated_at": "2025-07-09T12:16:13.903836Z"
+      }
+    ],
+    "primary_key": null,
+    "indexes": {}
+  }
+}

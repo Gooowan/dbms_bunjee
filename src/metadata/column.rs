@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -13,22 +14,43 @@ pub enum ColumnType {
 pub struct Column {
     pub name: String,
     pub data_type: ColumnType,
-    pub nullable: bool,
-    pub is_primary_key: bool,
-    pub is_unique: bool,
+    pub constraints: Vec<ColumnConstraint>,
     pub default_value: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ColumnConstraint {
+    NotNull,
+    Unique,
+    PrimaryKey,
+    ForeignKey(String, String), // (table_name, column_name)
+    Check(String), // SQL condition
+    Default(String), // Default value
 }
 
 impl Column {
     pub fn new(name: String, data_type: ColumnType) -> Self {
-        Column {
+        let now = Utc::now();
+        Self {
             name,
             data_type,
-            nullable: false,
-            is_primary_key: false,
-            is_unique: false,
+            constraints: Vec::new(),
             default_value: None,
+            created_at: now,
+            updated_at: now,
         }
+    }
+
+    pub fn with_constraint(mut self, constraint: ColumnConstraint) -> Self {
+        self.constraints.push(constraint);
+        self
+    }
+
+    pub fn with_default(mut self, default: String) -> Self {
+        self.default_value = Some(default);
+        self
     }
 
     pub fn validate_value(&self, value: &str) -> bool {
@@ -36,15 +58,26 @@ impl Column {
             ColumnType::Integer => value.parse::<i64>().is_ok(),
             ColumnType::Float => value.parse::<f64>().is_ok(),
             ColumnType::Varchar(max_len) => {
-                // Remove quotes if present and check length
                 let cleaned_value = value.trim_matches(|c| c == '\'' || c == '"');
                 cleaned_value.len() <= max_len
-            },
+            }
             ColumnType::Boolean => {
                 let cleaned_value = value.trim_matches(|c| c == '\'' || c == '"').to_lowercase();
-                cleaned_value == "true" || cleaned_value == "false"
-            },
-            ColumnType::Timestamp => chrono::DateTime::parse_from_rfc3339(value).is_ok(),
+                matches!(cleaned_value.as_str(), "true" | "false")
+            }
+            ColumnType::Timestamp => value.parse::<i64>().is_ok(),
         }
+    }
+
+    pub fn is_nullable(&self) -> bool {
+        !self.constraints.iter().any(|c| matches!(c, ColumnConstraint::NotNull))
+    }
+
+    pub fn is_unique(&self) -> bool {
+        self.constraints.iter().any(|c| matches!(c, ColumnConstraint::Unique | ColumnConstraint::PrimaryKey))
+    }
+
+    pub fn is_primary_key(&self) -> bool {
+        self.constraints.iter().any(|c| matches!(c, ColumnConstraint::PrimaryKey))
     }
 } 

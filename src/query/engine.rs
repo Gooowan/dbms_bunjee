@@ -1,6 +1,7 @@
 use std::collections::HashMap;
+use std::fs;
 use crate::metadata::Table;
-use crate::storage::Block;
+use crate::storage::{LSMEngine, Record};
 use super::error::QueryError;
 use super::result::QueryResult;
 use super::parser::{SelectParser, InsertParser, UpdateParser, DeleteParser, CreateParser};
@@ -9,25 +10,102 @@ use super::parser::{SelectParser, InsertParser, UpdateParser, DeleteParser, Crea
 
 pub struct QueryEngine {
     tables: HashMap<String, Table>,
-    storage_tables: HashMap<String, Vec<Block>>,
+    storage_engines: HashMap<String, LSMEngine>,
     select_parser: SelectParser,
     insert_parser: InsertParser,
     update_parser: UpdateParser,
     delete_parser: DeleteParser,
     create_parser: CreateParser,
+    data_dir: String,
 }
 
 impl QueryEngine {
     pub fn new() -> Self {
-        QueryEngine {
+        QueryEngine::new_with_data_dir("./db_data")
+    }
+
+    pub fn new_with_data_dir(data_dir: &str) -> Self {
+        let mut engine = QueryEngine {
             tables: HashMap::new(),
-            storage_tables: HashMap::new(),
+            storage_engines: HashMap::new(),
             select_parser: SelectParser::new(),
             insert_parser: InsertParser::new(),
             update_parser: UpdateParser::new(),
             delete_parser: DeleteParser::new(),
             create_parser: CreateParser::new(),
+            data_dir: data_dir.to_string(),
+        };
+        
+        // Load existing tables and their storage engines
+        if let Err(e) = engine.load_existing_tables() {
+            eprintln!("Warning: Failed to load existing tables: {}", e);
         }
+        
+        engine
+    }
+
+    /// Load existing tables from the data directory
+    fn load_existing_tables(&mut self) -> Result<(), QueryError> {
+        // Create data directory if it doesn't exist
+        if let Err(e) = fs::create_dir_all(&self.data_dir) {
+            return Err(QueryError::InternalError(format!("Failed to create data directory: {}", e)));
+        }
+
+        // Check for table metadata file
+        let metadata_path = format!("{}/tables.json", self.data_dir);
+        if !std::path::Path::new(&metadata_path).exists() {
+            return Ok(()); // No existing tables
+        }
+
+        // Load table metadata
+        match fs::read_to_string(&metadata_path) {
+            Ok(content) => {
+                match serde_json::from_str::<HashMap<String, Table>>(&content) {
+                    Ok(loaded_tables) => {
+                        for (table_name, table) in loaded_tables {
+                            // Create LSM storage engine for this table
+                            let table_data_dir = format!("{}/{}", self.data_dir, table_name);
+                            match LSMEngine::new(&table_data_dir, 100) {
+                                Ok(storage_engine) => {
+                                    self.tables.insert(table_name.clone(), table);
+                                    self.storage_engines.insert(table_name.clone(), storage_engine);
+                                    println!("Restored table: {}", table_name);
+                                }
+                                Err(e) => {
+                                    eprintln!("Warning: Failed to restore table '{}': {}", table_name, e);
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        return Err(QueryError::InternalError(format!("Failed to parse table metadata: {}", e)));
+                    }
+                }
+            }
+            Err(e) => {
+                return Err(QueryError::InternalError(format!("Failed to read table metadata: {}", e)));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Save table metadata to disk
+    fn save_table_metadata(&self) -> Result<(), QueryError> {
+        let metadata_path = format!("{}/tables.json", self.data_dir);
+        
+        match serde_json::to_string_pretty(&self.tables) {
+            Ok(content) => {
+                if let Err(e) = fs::write(&metadata_path, content) {
+                    return Err(QueryError::InternalError(format!("Failed to save table metadata: {}", e)));
+                }
+            }
+            Err(e) => {
+                return Err(QueryError::InternalError(format!("Failed to serialize table metadata: {}", e)));
+            }
+        }
+
+        Ok(())
     }
 
     pub fn execute(&mut self, query: &str) -> Result<QueryResult, QueryError> {
@@ -62,10 +140,10 @@ impl QueryEngine {
         let table = self.tables.get(table_name)
             .ok_or_else(|| QueryError::TableNotFound(table_name.to_string()))?;
 
-        let storage_blocks = self.storage_tables.get(table_name)
-            .ok_or_else(|| QueryError::TableNotFound(format!("Storage table not found: {}", table_name)))?;
+        let storage_engine = self.storage_engines.get_mut(table_name)
+            .ok_or_else(|| QueryError::TableNotFound(format!("Storage engine not found: {}", table_name)))?;
 
-        self.select_parser.parse_and_execute(tokens, table, storage_blocks)
+        self.select_parser.parse_and_execute_lsm(tokens, table, storage_engine)
     }
 
     fn execute_insert(&mut self, tokens: &[&str]) -> Result<QueryResult, QueryError> {
@@ -77,10 +155,10 @@ impl QueryEngine {
         let table = self.tables.get(table_name)
             .ok_or_else(|| QueryError::TableNotFound(table_name.to_string()))?;
 
-        let storage_blocks = self.storage_tables.get_mut(table_name)
-            .ok_or_else(|| QueryError::TableNotFound(format!("Storage table not found: {}", table_name)))?;
+        let storage_engine = self.storage_engines.get_mut(table_name)
+            .ok_or_else(|| QueryError::TableNotFound(format!("Storage engine not found: {}", table_name)))?;
 
-        self.insert_parser.parse_and_execute(tokens, table, storage_blocks)
+        self.insert_parser.parse_and_execute_lsm(tokens, table, storage_engine)
     }
 
     fn execute_update(&mut self, tokens: &[&str]) -> Result<QueryResult, QueryError> {
@@ -92,10 +170,10 @@ impl QueryEngine {
         let table = self.tables.get(table_name)
             .ok_or_else(|| QueryError::TableNotFound(table_name.to_string()))?;
 
-        let storage_blocks = self.storage_tables.get_mut(table_name)
-            .ok_or_else(|| QueryError::TableNotFound(format!("Storage table not found: {}", table_name)))?;
+        let storage_engine = self.storage_engines.get_mut(table_name)
+            .ok_or_else(|| QueryError::TableNotFound(format!("Storage engine not found: {}", table_name)))?;
 
-        self.update_parser.parse_and_execute(tokens, table, storage_blocks)
+        self.update_parser.parse_and_execute_lsm(tokens, table, storage_engine)
     }
 
     fn execute_delete(&mut self, tokens: &[&str]) -> Result<QueryResult, QueryError> {
@@ -107,10 +185,10 @@ impl QueryEngine {
         let table = self.tables.get(table_name)
             .ok_or_else(|| QueryError::TableNotFound(table_name.to_string()))?;
 
-        let storage_blocks = self.storage_tables.get_mut(table_name)
-            .ok_or_else(|| QueryError::TableNotFound(format!("Storage table not found: {}", table_name)))?;
+        let storage_engine = self.storage_engines.get_mut(table_name)
+            .ok_or_else(|| QueryError::TableNotFound(format!("Storage engine not found: {}", table_name)))?;
 
-        self.delete_parser.parse_and_execute(tokens, table, storage_blocks)
+        self.delete_parser.parse_and_execute_lsm(tokens, table, storage_engine)
     }
 
     fn execute_create(&mut self, tokens: &[&str]) -> Result<QueryResult, QueryError> {
@@ -124,8 +202,16 @@ impl QueryEngine {
             return Err(QueryError::DuplicateKey(format!("Table {} already exists", table_name)));
         }
 
+        // Create LSM storage engine for this table
+        let table_data_dir = format!("{}/{}", self.data_dir, table_name);
+        let storage_engine = LSMEngine::new(&table_data_dir, 100) // 100 records per memtable
+            .map_err(|e| QueryError::InternalError(format!("Failed to create storage engine: {}", e)))?;
+
         self.tables.insert(table_name.clone(), table);
-        self.storage_tables.insert(table_name, Vec::new());
+        self.storage_engines.insert(table_name.clone(), storage_engine);
+
+        // Save table metadata
+        self.save_table_metadata()?;
 
         Ok(QueryResult::CreateTable)
     }
@@ -146,8 +232,41 @@ impl QueryEngine {
         }
 
         self.tables.remove(table_name);
-        self.storage_tables.remove(table_name);
+        self.storage_engines.remove(table_name);
+
+        // Remove table data directory
+        let table_data_dir = format!("{}/{}", self.data_dir, table_name);
+        if let Err(e) = fs::remove_dir_all(&table_data_dir) {
+            eprintln!("Warning: Failed to remove table data directory: {}", e);
+        }
+
+        // Save updated table metadata
+        self.save_table_metadata()?;
+
         Ok(QueryResult::DropTable)
+    }
+
+    /// Get storage engine statistics for a table
+    pub fn get_table_stats(&mut self, table_name: &str) -> Result<crate::storage::EngineStats, QueryError> {
+        let storage_engine = self.storage_engines.get_mut(table_name)
+            .ok_or_else(|| QueryError::TableNotFound(table_name.to_string()))?;
+        
+        storage_engine.stats()
+            .map_err(|e| QueryError::InternalError(format!("Failed to get stats: {}", e)))
+    }
+
+    /// Flush all tables to disk
+    pub fn flush_all(&mut self) -> Result<(), QueryError> {
+        for (_, engine) in self.storage_engines.iter_mut() {
+            engine.flush()
+                .map_err(|e| QueryError::InternalError(format!("Failed to flush: {}", e)))?;
+        }
+        Ok(())
+    }
+
+    /// List all tables
+    pub fn list_tables(&self) -> Vec<String> {
+        self.tables.keys().cloned().collect()
     }
 }
 

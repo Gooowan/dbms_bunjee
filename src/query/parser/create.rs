@@ -46,14 +46,7 @@ impl CreateParser {
                 let col_name = parts[0].to_string();
                 let col_type = self.parse_column_type(&parts[1..])?;
                 
-                table.add_column(Column {
-                    name: col_name,
-                    data_type: col_type,
-                    nullable: false,
-                    is_primary_key: false,
-                    is_unique: false,
-                    default_value: None,
-                });
+                table.add_column(Column::new(col_name, col_type));
             }
 
             Ok((table_name.clone(), table))

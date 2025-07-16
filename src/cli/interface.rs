@@ -19,6 +19,7 @@ impl CLI {
         println!("Welcome to BUNJEE DBMS CLI!");
         println!("Type 'exit' or 'quit' to exit");
         println!("Type 'help' for available commands");
+        println!("Type 'flush' to manually flush all data to disk");
 
         loop {
             print!("{}", self.prompt);
@@ -36,8 +37,19 @@ impl CLI {
             }
 
             match input.to_lowercase().as_str() {
-                "exit" | "quit" => break,
+                "exit" | "quit" => {
+                    println!("Shutting down database...");
+                    if let Err(e) = self.shutdown() {
+                        eprintln!("Warning: Error during shutdown: {:?}", e);
+                    } else {
+                        println!("Database shutdown complete. All data has been persisted.");
+                    }
+                    break;
+                },
                 "help" => self.show_help(),
+                "flush" => self.manual_flush(),
+                "tables" => self.list_tables(),
+                "stats" => self.show_stats(),
                 _ => self.execute_query(input),
             }
         }
@@ -50,6 +62,56 @@ impl CLI {
         }
     }
 
+    fn shutdown(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        // Flush all data to ensure persistence
+        self.query_engine.flush_all()?;
+        Ok(())
+    }
+
+    fn manual_flush(&mut self) {
+        match self.query_engine.flush_all() {
+            Ok(()) => println!("✅ All data flushed to disk successfully"),
+            Err(e) => println!("❌ Error flushing data: {:?}", e),
+        }
+    }
+
+    fn list_tables(&self) {
+        let tables = self.query_engine.list_tables();
+        if tables.is_empty() {
+            println!("No tables found");
+        } else {
+            println!("Available tables:");
+            for table in tables {
+                println!("  - {}", table);
+            }
+        }
+    }
+
+    fn show_stats(&mut self) {
+        let tables = self.query_engine.list_tables();
+        if tables.is_empty() {
+            println!("No tables found");
+            return;
+        }
+
+        println!("Database Statistics:");
+        println!("===================");
+        for table_name in tables {
+            match self.query_engine.get_table_stats(&table_name) {
+                Ok(stats) => {
+                    println!("Table: {}", table_name);
+                    println!("  Memtable records: {}", stats.memtable_size);
+                    println!("  SSTable count: {}", stats.sstable_count);
+                    println!("  Total records: {}", stats.total_records);
+                    println!();
+                }
+                Err(e) => {
+                    println!("  Error getting stats for {}: {:?}", table_name, e);
+                }
+            }
+        }
+    }
+
     fn show_help(&self) {
         println!("\nAvailable commands:");
         println!("  SELECT * FROM table_name [WHERE condition]");
@@ -58,9 +120,13 @@ impl CLI {
         println!("  DELETE FROM table_name [WHERE condition]");
         println!("  CREATE TABLE table_name (col1 type1, col2 type2, ...)");
         println!("  DROP TABLE table_name");
-        println!("\nOther commands:");
+        println!();
+        println!("Utility commands:");
         println!("  help    - Show this help message");
-        println!("  exit    - Exit the program");
-        println!("  quit    - Exit the program");
+        println!("  tables  - List all tables");
+        println!("  stats   - Show database statistics");
+        println!("  flush   - Manually flush all data to disk");
+        println!("  exit    - Exit the database (automatically flushes data)");
+        println!("  quit    - Same as exit");
     }
 } 

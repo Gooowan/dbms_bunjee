@@ -1,7 +1,8 @@
-use crate::metadata::Column;
+use super::column::Column;
 use std::collections::HashMap;
-use crate::metadata::ColumnType;
+use serde::{Serialize, Deserialize};
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Table {
     pub name: String,
     pub columns: Vec<Column>,
@@ -11,7 +12,7 @@ pub struct Table {
 
 impl Table {
     pub fn new(name: String) -> Self {
-        Table {
+        Self {
             name,
             columns: Vec::new(),
             primary_key: None,
@@ -32,22 +33,31 @@ impl Table {
     }
 
     pub fn get_column_index(&self, column_name: &str) -> Option<usize> {
-        self.columns.iter().position(|col| col.name == column_name)
+        self.columns.iter().position(|c| c.name == column_name)
     }
 
     pub fn get_column_offset(&self, column_index: usize) -> usize {
-        self.columns[..column_index].iter()
-            .map(|col| match &col.data_type {
-                ColumnType::Varchar(max_len) => *max_len,
-                _ => 8, // Default size for other types
-            })
-            .sum()
+        let mut offset = 0;
+        for (i, column) in self.columns.iter().enumerate() {
+            if i == column_index {
+                break;
+            }
+            offset += self.get_column_length(i);
+        }
+        offset
     }
 
     pub fn get_column_length(&self, column_index: usize) -> usize {
-        match &self.columns[column_index].data_type {
-            ColumnType::Varchar(max_len) => *max_len,
-            _ => 8, // Default size for other types
+        if let Some(column) = self.columns.get(column_index) {
+            match column.data_type {
+                super::ColumnType::Integer => 8,
+                super::ColumnType::Float => 8,
+                super::ColumnType::Varchar(len) => 4 + len, // 4 bytes for length + data
+                super::ColumnType::Boolean => 1,
+                super::ColumnType::Timestamp => 8,
+            }
+        } else {
+            0
         }
     }
 } 

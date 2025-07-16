@@ -21,4 +21,6 @@ impl std::fmt::Display for QueryError {
             QueryError::InternalError(msg) => write!(f, "Internal error: {}", msg),
         }
     }
-} 
+}
+
+impl std::error::Error for QueryError {} 
