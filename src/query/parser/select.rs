@@ -4,10 +4,15 @@ use crate::query::error::QueryError;
 use crate::query::result::QueryResult;
 use super::r#where::WhereParser;
 use super::column::ColumnParser;
+use super::join::{JoinParser, JoinClause};
+use super::aggregation::{AggregationParser, AggregationClause, AggregateFunction};
+use std::collections::HashMap;
 
 pub struct SelectParser {
     where_parser: WhereParser,
-    column_parser: ColumnParser,
+    pub column_parser: ColumnParser,
+    join_parser: JoinParser,
+    aggregation_parser: AggregationParser,
 }
 
 impl SelectParser {
@@ -15,6 +20,8 @@ impl SelectParser {
         SelectParser {
             where_parser: WhereParser::new(),
             column_parser: ColumnParser::new(),
+            join_parser: JoinParser::new(),
+            aggregation_parser: AggregationParser::new(),
         }
     }
 
@@ -113,8 +120,92 @@ impl SelectParser {
         Ok(QueryResult::Select(results))
     }
 
-    // New LSM engine method
+    // Enhanced LSM engine method that supports JOIN and aggregation
     pub fn parse_and_execute_lsm(
+        &mut self,
+        tokens: &[&str],
+        table: &Table,
+        storage_engine: &mut LSMEngine,
+    ) -> Result<QueryResult, QueryError> {
+        // This method is for single table queries - should not be used for joins
+        let mut tables_and_engines = [(table, storage_engine)];
+        self.parse_and_execute_lsm_with_tables(tokens, &mut tables_and_engines)
+    }
+
+    /// Enhanced method that can handle both single table and join queries
+    pub fn parse_and_execute_lsm_with_tables(
+        &mut self,
+        tokens: &[&str],
+        tables_and_engines: &mut [(&Table, &mut LSMEngine)],
+    ) -> Result<QueryResult, QueryError> {
+        // Check if this is a JOIN query
+        let has_join = tokens.iter().any(|&t| t.to_uppercase() == "JOIN");
+        
+        if has_join {
+            // For JOIN queries, we need to handle this differently due to borrowing restrictions
+            return Err(QueryError::SyntaxError("JOIN queries should use the QueryEngine directly".to_string()));
+        } else {
+            // Check if this is an aggregation query
+            let select_end = tokens.iter()
+                .position(|&t| t.to_uppercase() == "FROM")
+                .unwrap_or(tokens.len());
+            
+            let select_tokens = &tokens[1..select_end];
+            let aggregate_functions = self.aggregation_parser.parse_aggregation_functions(select_tokens)?;
+            
+            let has_group_by = tokens.iter().any(|&t| t.to_uppercase() == "GROUP");
+            
+            if !aggregate_functions.is_empty() || has_group_by {
+                self.execute_aggregation_query(tokens, tables_and_engines)
+            } else {
+                // Regular single table query
+                if tables_and_engines.len() != 1 {
+                    return Err(QueryError::SyntaxError("Expected single table for non-join query".to_string()));
+                }
+                
+                let (table, storage_engine) = &mut tables_and_engines[0];
+                self.execute_regular_select(tokens, table, storage_engine)
+            }
+        }
+    }
+
+    fn execute_aggregation_query(
+        &mut self,
+        tokens: &[&str],
+        tables_and_engines: &mut [(&Table, &mut LSMEngine)],
+    ) -> Result<QueryResult, QueryError> {
+        if tables_and_engines.len() != 1 {
+            return Err(QueryError::SyntaxError("Aggregation queries support only single table".to_string()));
+        }
+
+        let (table, storage_engine) = &mut tables_and_engines[0];
+
+        // Parse aggregation functions
+        let select_end = tokens.iter()
+            .position(|&t| t.to_uppercase() == "FROM")
+            .unwrap_or(tokens.len());
+        
+        let select_tokens = &tokens[1..select_end];
+        let aggregate_functions = self.aggregation_parser.parse_aggregation_functions(select_tokens)?;
+
+        // Parse GROUP BY clause if present
+        let group_by_columns = if tokens.iter().any(|&t| t.to_uppercase() == "GROUP") {
+            self.aggregation_parser.parse_group_by(tokens)?
+        } else {
+            Vec::new()
+        };
+
+        let aggregation_clause = AggregationClause {
+            functions: aggregate_functions,
+            group_by_columns,
+        };
+
+        // We need to clone the table to avoid borrowing issues
+        let table_clone = (*table).clone();
+        self.aggregation_parser.execute_aggregation(&aggregation_clause, &table_clone, storage_engine)
+    }
+
+    fn execute_regular_select(
         &mut self,
         tokens: &[&str],
         table: &Table,
