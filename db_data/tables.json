@@ -1,14 +1,57 @@
 {
-  "test_users": {
-    "name": "test_users",
+  "companies": {
+    "name": "companies",
     "columns": [
       {
         "name": "id",
         "data_type": "Integer",
         "constraints": [],
         "default_value": null,
-        "created_at": "2025-07-16T08:29:44.700831Z",
-        "updated_at": "2025-07-16T08:29:44.700831Z"
+        "created_at": "2025-07-22T20:24:14.828640Z",
+        "updated_at": "2025-07-22T20:24:14.828640Z"
+      },
+      {
+        "name": "name",
+        "data_type": {
+          "Varchar": 40
+        },
+        "constraints": [],
+        "default_value": null,
+        "created_at": "2025-07-22T20:24:14.828653Z",
+        "updated_at": "2025-07-22T20:24:14.828653Z"
+      },
+      {
+        "name": "industry",
+        "data_type": {
+          "Varchar": 30
+        },
+        "constraints": [],
+        "default_value": null,
+        "created_at": "2025-07-22T20:24:14.828658Z",
+        "updated_at": "2025-07-22T20:24:14.828658Z"
+      },
+      {
+        "name": "revenue",
+        "data_type": "Integer",
+        "constraints": [],
+        "default_value": null,
+        "created_at": "2025-07-22T20:24:14.828661Z",
+        "updated_at": "2025-07-22T20:24:14.828661Z"
+      }
+    ],
+    "primary_key": null,
+    "indexes": {}
+  },
+  "employees": {
+    "name": "employees",
+    "columns": [
+      {
+        "name": "id",
+        "data_type": "Integer",
+        "constraints": [],
+        "default_value": null,
+        "created_at": "2025-07-22T20:24:20.896086Z",
+        "updated_at": "2025-07-22T20:24:20.896086Z"
       },
       {
         "name": "name",
@@ -17,8 +60,34 @@
         },
         "constraints": [],
         "default_value": null,
-        "created_at": "2025-07-16T08:29:44.700833Z",
-        "updated_at": "2025-07-16T08:29:44.700833Z"
+        "created_at": "2025-07-22T20:24:20.896104Z",
+        "updated_at": "2025-07-22T20:24:20.896104Z"
+      },
+      {
+        "name": "company_id",
+        "data_type": "Integer",
+        "constraints": [],
+        "default_value": null,
+        "created_at": "2025-07-22T20:24:20.896111Z",
+        "updated_at": "2025-07-22T20:24:20.896111Z"
+      },
+      {
+        "name": "salary",
+        "data_type": "Integer",
+        "constraints": [],
+        "default_value": null,
+        "created_at": "2025-07-22T20:24:20.896117Z",
+        "updated_at": "2025-07-22T20:24:20.896117Z"
+      },
+      {
+        "name": "department",
+        "data_type": {
+          "Varchar": 30
+        },
+        "constraints": [],
+        "default_value": null,
+        "created_at": "2025-07-22T20:24:20.896124Z",
+        "updated_at": "2025-07-22T20:24:20.896124Z"
       }
     ],
     "primary_key": null,
@@ -32,8 +101,8 @@
         "data_type": "Integer",
         "constraints": [],
         "default_value": null,
-        "created_at": "2025-07-09T12:16:13.903830Z",
-        "updated_at": "2025-07-09T12:16:13.903830Z"
+        "created_at": "2025-07-22T20:23:59.774247Z",
+        "updated_at": "2025-07-22T20:23:59.774247Z"
       },
       {
         "name": "name",
@@ -42,16 +111,116 @@
         },
         "constraints": [],
         "default_value": null,
-        "created_at": "2025-07-09T12:16:13.903835Z",
-        "updated_at": "2025-07-09T12:16:13.903835Z"
+        "created_at": "2025-07-22T20:23:59.774261Z",
+        "updated_at": "2025-07-22T20:23:59.774261Z"
       },
       {
         "name": "price",
         "data_type": "Integer",
         "constraints": [],
         "default_value": null,
-        "created_at": "2025-07-09T12:16:13.903836Z",
-        "updated_at": "2025-07-09T12:16:13.903836Z"
+        "created_at": "2025-07-22T20:23:59.774265Z",
+        "updated_at": "2025-07-22T20:23:59.774265Z"
+      },
+      {
+        "name": "category",
+        "data_type": {
+          "Varchar": 20
+        },
+        "constraints": [],
+        "default_value": null,
+        "created_at": "2025-07-22T20:23:59.774270Z",
+        "updated_at": "2025-07-22T20:23:59.774270Z"
+      }
+    ],
+    "primary_key": null,
+    "indexes": {}
+  },
+  "orders": {
+    "name": "orders",
+    "columns": [
+      {
+        "name": "id",
+        "data_type": "Integer",
+        "constraints": [],
+        "default_value": null,
+        "created_at": "2025-07-22T20:24:06.991969Z",
+        "updated_at": "2025-07-22T20:24:06.991969Z"
+      },
+      {
+        "name": "user_id",
+        "data_type": "Integer",
+        "constraints": [],
+        "default_value": null,
+        "created_at": "2025-07-22T20:24:06.991980Z",
+        "updated_at": "2025-07-22T20:24:06.991980Z"
+      },
+      {
+        "name": "product_id",
+        "data_type": "Integer",
+        "constraints": [],
+        "default_value": null,
+        "created_at": "2025-07-22T20:24:06.991983Z",
+        "updated_at": "2025-07-22T20:24:06.991983Z"
+      },
+      {
+        "name": "quantity",
+        "data_type": "Integer",
+        "constraints": [],
+        "default_value": null,
+        "created_at": "2025-07-22T20:24:06.991987Z",
+        "updated_at": "2025-07-22T20:24:06.991987Z"
+      },
+      {
+        "name": "total_price",
+        "data_type": "Integer",
+        "constraints": [],
+        "default_value": null,
+        "created_at": "2025-07-22T20:24:06.991990Z",
+        "updated_at": "2025-07-22T20:24:06.991990Z"
+      }
+    ],
+    "primary_key": null,
+    "indexes": {}
+  },
+  "users": {
+    "name": "users",
+    "columns": [
+      {
+        "name": "id",
+        "data_type": "Integer",
+        "constraints": [],
+        "default_value": null,
+        "created_at": "2025-07-22T20:27:04.046397Z",
+        "updated_at": "2025-07-22T20:27:04.046397Z"
+      },
+      {
+        "name": "name",
+        "data_type": {
+          "Varchar": 50
+        },
+        "constraints": [],
+        "default_value": null,
+        "created_at": "2025-07-22T20:27:04.046415Z",
+        "updated_at": "2025-07-22T20:27:04.046415Z"
+      },
+      {
+        "name": "age",
+        "data_type": "Integer",
+        "constraints": [],
+        "default_value": null,
+        "created_at": "2025-07-22T20:27:04.046422Z",
+        "updated_at": "2025-07-22T20:27:04.046422Z"
+      },
+      {
+        "name": "email",
+        "data_type": {
+          "Varchar": 100
+        },
+        "constraints": [],
+        "default_value": null,
+        "created_at": "2025-07-22T20:27:04.046430Z",
+        "updated_at": "2025-07-22T20:27:04.046430Z"
       }
     ],
     "primary_key": null,

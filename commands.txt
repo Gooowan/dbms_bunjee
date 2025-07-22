@@ -1,0 +1,172 @@
+CREATE TABLE users (id INTEGER, name VARCHAR 50, age INTEGER, email VARCHAR 100)
+
+CREATE TABLE products (id INTEGER, name VARCHAR 30, price INTEGER, category VARCHAR 20)
+
+CREATE TABLE orders (id INTEGER, user_id INTEGER, product_id INTEGER, quantity INTEGER, total_price INTEGER)
+
+CREATE TABLE companies (id INTEGER, name VARCHAR 40, industry VARCHAR 30, revenue INTEGER)
+
+CREATE TABLE employees (id INTEGER, name VARCHAR 50, company_id INTEGER, salary INTEGER, department VARCHAR 30)
+
+INSERT INTO users VALUES (1, 'Alice Johnson', 28, 'alice@email.com')
+INSERT INTO users VALUES (2, 'Bob Smith', 35, 'bob@email.com')
+INSERT INTO users VALUES (3, 'Charlie Brown', 22, 'charlie@email.com')
+INSERT INTO users VALUES (4, 'Diana Wilson', 31, 'diana@email.com')
+INSERT INTO users VALUES (5, 'Eve Davis', 27, 'eve@email.com')
+INSERT INTO users VALUES (6, 'Frank Miller', 45, 'frank@email.com')
+INSERT INTO users VALUES (7, 'Grace Lee', 29, 'grace@email.com')
+INSERT INTO users VALUES (8, 'Henry Taylor', 33, 'henry@email.com')
+INSERT INTO users VALUES (9, 'Ivy Chen', 26, 'ivy@email.com')
+INSERT INTO users VALUES (10, 'Jack Wilson', 38, 'jack@email.com')
+
+
+INSERT INTO products VALUES (1, 'Laptop', 1200, 'Electronics')
+INSERT INTO products VALUES (2, 'Phone', 800, 'Electronics')
+INSERT INTO products VALUES (3, 'Book', 25, 'Education')
+INSERT INTO products VALUES (4, 'Headphones', 150, 'Electronics')
+INSERT INTO products VALUES (5, 'Desk Chair', 300, 'Furniture')
+INSERT INTO products VALUES (6, 'Monitor', 400, 'Electronics')
+INSERT INTO products VALUES (7, 'Keyboard', 100, 'Electronics')
+INSERT INTO products VALUES (8, 'Mouse', 50, 'Electronics')
+INSERT INTO products VALUES (9, 'Table', 250, 'Furniture')
+INSERT INTO products VALUES (10, 'Notebook', 5, 'Education')
+
+
+INSERT INTO orders VALUES (1, 1, 1, 1, 1200)
+INSERT INTO orders VALUES (2, 2, 2, 2, 1600)
+INSERT INTO orders VALUES (3, 3, 3, 5, 125)
+INSERT INTO orders VALUES (4, 1, 4, 1, 150)
+INSERT INTO orders VALUES (5, 4, 5, 1, 300)
+INSERT INTO orders VALUES (6, 2, 6, 1, 400)
+INSERT INTO orders VALUES (7, 5, 7, 2, 200)
+INSERT INTO orders VALUES (8, 3, 8, 3, 150)
+INSERT INTO orders VALUES (9, 6, 9, 1, 250)
+INSERT INTO orders VALUES (10, 7, 10, 10, 50)
+INSERT INTO orders VALUES (11, 1, 2, 1, 800)
+INSERT INTO orders VALUES (12, 8, 1, 1, 1200)
+INSERT INTO orders VALUES (13, 9, 4, 2, 300)
+INSERT INTO orders VALUES (14, 10, 6, 1, 400)
+INSERT INTO orders VALUES (15, 4, 3, 3, 75)
+
+
+INSERT INTO companies VALUES (1, 'TechCorp', 'Technology', 5000000)
+INSERT INTO companies VALUES (2, 'DataSoft', 'Software', 3200000)
+INSERT INTO companies VALUES (3, 'CloudSystems', 'Cloud', 7500000)
+INSERT INTO companies VALUES (4, 'WebDev Inc', 'Web Development', 1800000)
+INSERT INTO companies VALUES (5, 'AI Solutions', 'Artificial Intelligence', 9200000)
+
+
+INSERT INTO employees VALUES (1, 'Sarah Connor', 1, 85000, 'Engineering')
+INSERT INTO employees VALUES (2, 'John Doe', 1, 75000, 'Engineering')
+INSERT INTO employees VALUES (3, 'Jane Smith', 2, 95000, 'Engineering')
+INSERT INTO employees VALUES (4, 'Mike Johnson', 2, 70000, 'Marketing')
+INSERT INTO employees VALUES (5, 'Lisa Brown', 3, 120000, 'Engineering')
+INSERT INTO employees VALUES (6, 'Tom Wilson', 3, 65000, 'Sales')
+INSERT INTO employees VALUES (7, 'Amy Davis', 4, 80000, 'Engineering')
+INSERT INTO employees VALUES (8, 'Chris Lee', 4, 60000, 'Design')
+INSERT INTO employees VALUES (9, 'Alex Taylor', 5, 130000, 'Engineering')
+INSERT INTO employees VALUES (10, 'Emma Chen', 5, 110000, 'Research')
+
+
+SELECT * FROM users
+
+SELECT name, age FROM users
+
+SELECT * FROM products WHERE category = 'Electronics'
+
+SELECT * FROM users WHERE age > 30
+
+SELECT name, price FROM products WHERE price < 200
+
+
+SELECT COUNT(*) FROM users
+
+SELECT SUM(price) FROM products
+
+SELECT AVG(age) FROM users
+
+SELECT AVG(price) FROM products WHERE price < 50
+
+SELECT MIN(price) FROM products
+
+SELECT MAX(salary) FROM employees
+
+
+SELECT category, COUNT(*) FROM products GROUP BY category
+
+SELECT category, AVG(price) FROM products GROUP BY category
+
+SELECT department, AVG(salary) FROM employees GROUP BY department
+
+SELECT company_id, COUNT(*) FROM employees GROUP BY company_id
+
+SELECT user_id, SUM(total_price) FROM orders GROUP BY user_id
+
+-- More aggregation queries with WHERE clauses
+SELECT COUNT(*) FROM products WHERE category = 'Electronics'
+
+SELECT SUM(price) FROM products WHERE price > 100
+
+SELECT MIN(age) FROM users WHERE age > 25
+
+SELECT MAX(salary) FROM employees WHERE department = 'Engineering'
+
+SELECT AVG(total_price) FROM orders WHERE quantity > 1
+
+SELECT COUNT(*) FROM employees WHERE salary > 80000
+
+
+SELECT category, AVG(price) FROM products WHERE price > 50 GROUP BY category
+
+SELECT department, COUNT(*) FROM employees WHERE salary > 70000 GROUP BY department
+
+SELECT user_id, SUM(total_price) FROM orders WHERE total_price > 200 GROUP BY user_id
+
+
+SELECT * FROM products WHERE price > 100 AND category = 'Electronics'
+
+SELECT name FROM users WHERE age >= 25 AND age <= 35
+
+SELECT * FROM orders WHERE quantity > 1
+
+SELECT name, salary FROM employees WHERE salary > 80000
+
+
+SELECT users.name, orders.total_price FROM users INNER JOIN orders ON users.id = orders.user_id
+
+SELECT users.name, products.name FROM users INNER JOIN orders ON users.id = orders.user_id INNER JOIN products ON orders.product_id = products.id
+
+SELECT employees.name, companies.name FROM employees INNER JOIN companies ON employees.company_id = companies.id
+
+SELECT products.name, orders.quantity FROM products INNER JOIN orders ON products.id = orders.product_id
+
+
+SELECT users.name, products.name, orders.quantity FROM users INNER JOIN orders ON users.id = orders.user_id INNER JOIN products ON orders.product_id = products.id WHERE orders.quantity > 1
+
+
+UPDATE users SET age = 29 WHERE id = 1
+
+UPDATE products SET price = 1300 WHERE id = 1
+
+UPDATE employees SET salary = 90000 WHERE id = 2
+
+
+DELETE FROM orders WHERE quantity = 1
+
+DELETE FROM products WHERE price < 30
+
+
+tables
+
+
+stats
+
+
+flush
+
+
+SELECT COUNT(*) FROM users
+
+SELECT category, COUNT(*) FROM products GROUP BY category
+
+SELECT companies.name, AVG(employees.salary) FROM companies INNER JOIN employees ON companies.id = employees.company_id GROUP BY companies.name 

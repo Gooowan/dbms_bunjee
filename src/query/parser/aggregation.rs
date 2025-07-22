@@ -117,6 +117,45 @@ impl AggregationParser {
         }
     }
 
+    /// Execute aggregation query with WHERE clause support
+    pub fn execute_aggregation_with_where(
+        &self,
+        aggregation_clause: &AggregationClause,
+        table: &Table,
+        storage_engine: &mut LSMEngine,
+        where_clause: Option<&super::r#where::WhereClause>,
+    ) -> Result<QueryResult, QueryError> {
+        use super::r#where::WhereParser;
+        let where_parser = WhereParser::new();
+
+        // Get all records
+        let all_records = storage_engine.get_all_records()
+            .map_err(|e| QueryError::InternalError(format!("Failed to get all records: {}", e)))?;
+
+        // Parse and filter records based on WHERE clause
+        let mut filtered_rows = Vec::new();
+        for record in all_records {
+            let row_data = self.parse_record_data(&record, table)?;
+            
+            // Apply WHERE clause filter if present
+            if let Some(where_clause) = where_clause {
+                if !where_parser.evaluate_where_clause(&row_data, table, where_clause)? {
+                    continue; // Skip this record
+                }
+            }
+            
+            filtered_rows.push(row_data);
+        }
+
+        if aggregation_clause.group_by_columns.is_empty() {
+            // No GROUP BY - single aggregation result
+            self.execute_single_aggregation(&aggregation_clause.functions, table, &filtered_rows)
+        } else {
+            // GROUP BY aggregation
+            self.execute_grouped_aggregation(aggregation_clause, table, &filtered_rows)
+        }
+    }
+
     fn execute_single_aggregation(
         &self,
         functions: &[AggregateFunction],

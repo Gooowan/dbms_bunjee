@@ -188,6 +188,17 @@ impl SelectParser {
         let select_tokens = &tokens[1..select_end];
         let aggregate_functions = self.aggregation_parser.parse_aggregation_functions(select_tokens)?;
 
+        // Parse WHERE clause if present
+        let where_index = tokens.iter()
+            .position(|&t| t.to_uppercase() == "WHERE")
+            .unwrap_or(tokens.len());
+
+        let where_clause = if where_index < tokens.len() {
+            Some(self.where_parser.parse_where_clause(&tokens[where_index + 1..])?)
+        } else {
+            None
+        };
+
         // Parse GROUP BY clause if present
         let group_by_columns = if tokens.iter().any(|&t| t.to_uppercase() == "GROUP") {
             self.aggregation_parser.parse_group_by(tokens)?
@@ -202,7 +213,7 @@ impl SelectParser {
 
         // We need to clone the table to avoid borrowing issues
         let table_clone = (*table).clone();
-        self.aggregation_parser.execute_aggregation(&aggregation_clause, &table_clone, storage_engine)
+        self.aggregation_parser.execute_aggregation_with_where(&aggregation_clause, &table_clone, storage_engine, where_clause.as_ref())
     }
 
     fn execute_regular_select(
